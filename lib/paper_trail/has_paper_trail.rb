@@ -270,12 +270,16 @@ module PaperTrail
 
       def record_update
         if paper_trail_switched_on? && changed_notably?
-          object_attrs = object_attrs_for_paper_trail(item_before_change)
           data = {
             :event     => paper_trail_event || 'update',
-            :object    => self.class.paper_trail_version_class.object_col_is_json? ? object_attrs : PaperTrail.serializer.dump(object_attrs),
             :whodunnit => PaperTrail.whodunnit
           }
+
+          if self.class.paper_trail_version_class.column_names.include?('object')
+            object_attrs = object_attrs_for_paper_trail(item_before_change)
+            data[:object] = self.class.paper_trail_version_class.object_col_is_json? ? object_attrs :
+              PaperTrail.serializer.dump(object_attrs)
+          end
 
           if self.class.paper_trail_version_class.column_names.include?('object_changes')
             data[:object_changes] = self.class.paper_trail_version_class.object_changes_col_is_json? ? changes_for_paper_trail :
@@ -303,14 +307,19 @@ module PaperTrail
 
       def record_destroy
         if paper_trail_switched_on? and not new_record?
-          object_attrs = object_attrs_for_paper_trail(item_before_change)
           data = {
             :item_id   => self.id,
             :item_type => self.class.base_class.name,
             :event     => paper_trail_event || 'destroy',
-            :object    => self.class.paper_trail_version_class.object_col_is_json? ? object_attrs : PaperTrail.serializer.dump(object_attrs),
             :whodunnit => PaperTrail.whodunnit
           }
+
+          if self.class.paper_trail_version_class.column_names.include?('object')
+            object_attrs = object_attrs_for_paper_trail(item_before_change)
+            data[:object] = self.class.paper_trail_version_class.object_col_is_json? ? object_attrs :
+              PaperTrail.serializer.dump(object_attrs)
+          end
+
           send("#{self.class.version_association_name}=", self.class.paper_trail_version_class.create(merge_metadata(data)))
           send(self.class.versions_association_name).send :load_target
         end
